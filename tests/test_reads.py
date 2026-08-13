@@ -6,6 +6,12 @@ registers. This library drops the scan groups, so a full poll is those blocks
 with the adjacent fast/medium pairs merged: every read below is either one of
 the plugin's blocks or the union of neighbouring ones, and none is wider than
 the widest read the plugin issues.
+
+Reads are grouped by sub-system, each planned on its own so that one failing
+block only holds back its own sub-system. The blocks are the same ones a single
+pooled plan produced — the sub-systems own disjoint address ranges, so nothing
+merges across them — but they come in sub-system order rather than address
+order, which is why `settings` (45127) reads after `bms` (47902).
 """
 
 from __future__ import annotations
@@ -31,8 +37,8 @@ EXPECTED_POLL = [
     (36025, 2),  # meter active power
     (37002, 7),  # BMS status, SoC, SoH
     (37020, 4),  # cell extremes
-    (45127, 1),  # configured Modbus address
     (47902, 9),  # real-time BMS block
+    (45127, 1),  # configured Modbus address
 ]
 
 
@@ -114,7 +120,15 @@ async def test_the_unmapped_span_is_never_read(
 async def test_every_field_is_read(device: ViessmannHybridInverter) -> None:
     """A poll plus setup covers every register the library declares."""
     covered: set[int] = set()
-    for component in (device.info, *device.polled_components):
+    for component in (
+        device.info,
+        device.inverter,
+        device.meter,
+        device.battery,
+        device.bms,
+        device.settings,
+    ):
+        assert component is not None
         raw = await component.async_read_raw()
         covered.update(raw["holding"])
     assert seeded_addresses() <= covered

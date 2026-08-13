@@ -23,7 +23,8 @@ async def test_setup_finds_every_sub_system(device: ViessmannHybridInverter) -> 
     assert device.battery is not None
     assert device.bms is not None
     assert device.settings is not None
-    assert len(device.polled_components) == 5
+    report = await device.async_update()
+    assert report.updated == {"inverter", "meter", "battery", "bms", "settings"}
 
 
 async def test_an_installation_without_a_battery(seeded_unit: MockModbusUnit) -> None:

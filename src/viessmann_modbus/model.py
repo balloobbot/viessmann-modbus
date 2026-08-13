@@ -7,6 +7,9 @@ big-endian word order, which is the framework default.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from modbus_connection import ModbusError
 from modbus_connection.model import Component, NumberField
 
 from .ranges import MAX_READ_SPAN, REGISTER_RANGES
@@ -17,6 +20,24 @@ class ViessmannComponent(Component):
 
     register_ranges = REGISTER_RANGES
     max_span = MAX_READ_SPAN
+
+
+@dataclass(frozen=True)
+class UpdateReport:
+    """What one poll refreshed, by the device's sub-system attribute names.
+
+    A failed sub-system kept its previous values and did not notify; the error
+    that failed it rides along. A dead link is never in here — the update
+    raises ``ModbusConnectionError`` instead of reporting partial silence.
+    """
+
+    updated: set[str]
+    failed: dict[str, ModbusError]
+
+    @property
+    def complete(self) -> bool:
+        """Whether every polled sub-system refreshed."""
+        return not self.failed
 
 
 def gauge32(

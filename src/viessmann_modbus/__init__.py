@@ -31,7 +31,7 @@ from .enums import (
 )
 from .inverter import Inverter
 from .meter import Meter
-from .model import ViessmannComponent
+from .model import UpdateReport, ViessmannComponent
 from .ranges import MAX_READ_SPAN, REGISTER_RANGES
 from .settings import Settings
 
@@ -48,6 +48,7 @@ __all__ = [
     "MeterCommunicationStatus",
     "RealtimeBms",
     "Settings",
+    "UpdateReport",
     "ViessmannComponent",
     "ViessmannHybridInverter",
     "WorkMode",
