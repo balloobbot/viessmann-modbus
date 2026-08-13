@@ -9,7 +9,11 @@ sub-system granularity.
 from __future__ import annotations
 
 import pytest
-from modbus_connection import ModbusConnectionError, ModbusTimeoutError
+from modbus_connection import (
+    ModbusConnectionError,
+    ModbusTimeoutError,
+    ServerDeviceBusyError,
+)
 from modbus_connection.mock import MockModbusUnit
 
 from viessmann_modbus import ViessmannHybridInverter
@@ -87,3 +91,24 @@ async def test_a_failed_sub_system_is_polled_again_next_time(
 
     assert report.complete
     assert device.battery.soc == 80
+
+
+async def test_a_busy_probe_does_not_latch_a_sub_system_as_absent(
+    seeded_unit: MockModbusUnit,
+) -> None:
+    """Only a refused address proves absence; a busy device is transient.
+
+    Setup propagates the error rather than recording the battery as missing,
+    so the device stays unset up and the next update probes it again.
+    """
+    seeded_unit.fail_read(37002, ServerDeviceBusyError())
+    device = ViessmannHybridInverter(seeded_unit)
+    with pytest.raises(ServerDeviceBusyError):
+        await device.async_update()
+
+    seeded_unit.fail_read(37002, None)
+    report = await device.async_update()
+
+    assert device.battery is not None
+    assert device.battery.soc == 74
+    assert "battery" in report.updated

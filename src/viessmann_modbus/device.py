@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from modbus_connection import (
+    IllegalDataAddressError,
+    IllegalFunctionError,
     ModbusConnectionError,
     ModbusError,
-    ModbusExceptionError,
 )
 from modbus_connection.model import Component
 
@@ -27,10 +28,15 @@ _POLLED = ("inverter", "meter", "battery", "bms", "settings")
 
 
 async def _optional[C: Component](component: C) -> C | None:
-    """Read a sub-system that not every installation has; ``None`` if absent."""
+    """Read a sub-system that not every installation has; ``None`` if absent.
+
+    Only a refusal of the address itself proves absence. Anything else — a
+    timeout, a busy device — is transient, and propagates so that setup is
+    retried rather than recording the sub-system as missing for good.
+    """
     try:
         await component.async_update()
-    except ModbusExceptionError:
+    except (IllegalDataAddressError, IllegalFunctionError):
         return None
     return component
 

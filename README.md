@@ -64,7 +64,10 @@ the optional blocks and polls only what the installation answers.
 | `settings` | 45127 | Configured Modbus address. |
 
 `meter`, `battery`, `bms` and `settings` are `None` on an installation whose
-inverter refuses those blocks — a unit without a battery or without a meter. Each
+inverter refuses those blocks — a unit without a battery or without a meter.
+Only an *illegal address* or *illegal function* reply counts as absent: a
+timeout or a busy device during setup is transient, so setup raises and the next
+`async_update()` probes again rather than writing the sub-system off. Each
 sub-system is a `Component`, can be refreshed on its own, and carries its own
 update listeners.
 
