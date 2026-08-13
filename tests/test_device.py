@@ -76,6 +76,42 @@ async def test_listeners_fire_per_sub_system(device: ViessmannHybridInverter) ->
     assert sorted(seen) == ["battery", "inverter"]
 
 
+async def test_read_raw_covers_the_setup_only_identity_block(
+    device: ViessmannHybridInverter,
+) -> None:
+    """A dump is only useful to an issue report if it names the inverter."""
+    raw = await device.async_read_raw()
+
+    assert set(raw) == {"holding"}
+    holding = raw["holding"]
+    assert holding[35001] == 6000  # identity: read at setup, never polled
+    assert holding[35103] == 3251  # inverter: polled
+    assert holding[45127] == 247  # settings: polled
+    assert 35050 not in holding  # the unmapped span stays untouched
+
+
+async def test_read_raw_leaves_out_an_absent_sub_system(
+    seeded_unit: MockModbusUnit,
+) -> None:
+    """Setup wrote the battery off; the dump must not read it back in."""
+    seeded_unit.fail_read(37002, IllegalDataAddressError())
+    device = ViessmannHybridInverter(seeded_unit)
+    await device.async_update()
+
+    raw = await device.async_read_raw()
+
+    assert 37002 not in raw["holding"]
+    assert raw["holding"][35001] == 6000
+
+
+async def test_read_raw_sets_the_device_up_first(seeded_unit: MockModbusUnit) -> None:
+    """Dumping before any poll still has to settle what to dump."""
+    raw = await ViessmannHybridInverter(seeded_unit).async_read_raw()
+
+    assert raw["holding"][35001] == 6000
+    assert raw["holding"][47902] == 5480
+
+
 @pytest.mark.parametrize(
     "component",
     [DeviceInfo, Inverter, Meter, Battery, RealtimeBms, Settings],

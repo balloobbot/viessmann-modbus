@@ -118,3 +118,21 @@ class ViessmannHybridInverter:
             fresh: Component = getattr(self, name)
             fresh.notify()
         return UpdateReport(updated, failed)
+
+    async def async_read_raw(self) -> dict[str, dict[int, int | bool]]:
+        """Every register this device reads, undecoded — for diagnostics.
+
+        Covers :attr:`info`, which only setup reads, as well as the polled
+        sub-systems, so a dump carries the registers naming the inverter. Left
+        out are the blocks this installation does not have. The first call sets
+        the device up.
+        """
+        if self._polled is None:
+            await self.async_setup()
+        assert self._polled is not None  # async_setup() builds it
+        raw: dict[str, dict[int, int | bool]] = {}
+        for name in ("info", *self._polled):
+            component: Component = getattr(self, name)
+            for space, values in (await component.async_read_raw()).items():
+                raw.setdefault(space, {}).update(values)
+        return raw

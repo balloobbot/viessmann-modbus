@@ -97,6 +97,21 @@ Containment is per sub-system rather than per block: `inverter` is a single
 sub-system spanning eight blocks, so one slow block there holds back all of its
 fields.
 
+## Raw register dump
+
+`async_read_raw()` reads every register the device reads and returns it
+undecoded, keyed by address space and address — the payload a bug report wants.
+It covers `info`, which only setup reads, as well as the polled sub-systems, and
+leaves out the blocks this installation does not have.
+
+```python
+raw = await device.async_read_raw()
+raw["holding"]  # {address: value} — everything on this inverter is FC03
+```
+
+The dump replays into `modbus-connection`'s mock backend through `load_raw()`, so
+one attached to an issue can back a regression test with no hardware.
+
 ## Not supported
 
 - **ASCII-over-TCP framing is not supported, under any circumstance.** The
