@@ -90,6 +90,18 @@ async def test_read_raw_covers_the_setup_only_identity_block(
     assert 35050 not in holding  # the unmapped span stays untouched
 
 
+async def test_read_raw_does_not_notify(device: ViessmannHybridInverter) -> None:
+    """A dump refreshes the fields, but must not look like a poll."""
+    seen: list[str] = []
+    device.inverter.add_update_listener(lambda: seen.append("inverter"))
+    device.info.add_update_listener(lambda: seen.append("info"))
+
+    await device.async_read_raw()
+
+    assert seen == []
+    assert device.inverter.pv_voltage_1 is not None
+
+
 async def test_read_raw_leaves_out_an_absent_sub_system(
     seeded_unit: MockModbusUnit,
 ) -> None:

@@ -126,6 +126,8 @@ class ViessmannHybridInverter:
         sub-systems, so a dump carries the registers naming the inverter. Left
         out are the blocks this installation does not have. The first call sets
         the device up.
+
+        The fields refresh, but no listener fires: a dump is not a poll.
         """
         if self._polled is None:
             await self.async_setup()
@@ -133,6 +135,6 @@ class ViessmannHybridInverter:
         raw: dict[str, dict[int, int | bool]] = {}
         for name in ("info", *self._polled):
             component: Component = getattr(self, name)
-            for space, values in (await component.async_read_raw()).items():
+            for space, values in (await component.async_read_raw(notify=False)).items():
                 raw.setdefault(space, {}).update(values)
         return raw

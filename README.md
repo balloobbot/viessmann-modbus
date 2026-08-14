@@ -102,7 +102,8 @@ fields.
 `async_read_raw()` reads every register the device reads and returns it
 undecoded, keyed by address space and address — the payload a bug report wants.
 It covers `info`, which only setup reads, as well as the polled sub-systems, and
-leaves out the blocks this installation does not have.
+leaves out the blocks this installation does not have. The fields refresh, but no
+listener fires — downloading a dump must not look like a poll.
 
 ```python
 raw = await device.async_read_raw()
