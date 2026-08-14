@@ -90,8 +90,12 @@ A sub-system whose read fails keeps its previous values and does not notify its
 listeners; it is named in `report.failed` with the error that failed it, while
 everything that did refresh lands in `report.updated`. Listeners fire only once
 the whole poll is over, so a callback never sees a half-updated device. A
-failure never drops a sub-system — it is polled again on the next update. Only a
-dead link raises, as `ModbusConnectionError`.
+failure never drops a sub-system — it is polled again on the next update. A
+dead link raises, as `ModbusConnectionError`. So does a timeout on the first
+sub-system tried, as `ModbusTimeoutError`: with nothing answered yet — no
+refresh and no refusal either — the device is taken to be silent, rather than
+spending one full timeout per sub-system to find that out. Once anything has
+answered, a timeout is contained like any other failure.
 
 Containment is per sub-system rather than per block: `inverter` is a single
 sub-system spanning eight blocks, so one slow block there holds back all of its

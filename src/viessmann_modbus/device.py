@@ -9,6 +9,7 @@ from modbus_connection import (
     IllegalFunctionError,
     ModbusConnectionError,
     ModbusError,
+    ModbusTimeoutError,
 )
 from modbus_connection.model import Component
 
@@ -97,7 +98,9 @@ class ViessmannHybridInverter:
         the report with its error, while the rest still refresh. Listeners fire
         only after every sub-system has been tried, and only on the ones that
         refreshed. A failure of the link itself raises ``ModbusConnectionError``
-        instead of reporting.
+        instead of reporting, and so does a timeout on the first sub-system
+        tried: nothing has answered, so the device is taken to be silent rather
+        than walked block by block at a full timeout each.
         """
         if self._polled is None:
             await self.async_setup()
@@ -110,6 +113,10 @@ class ViessmannHybridInverter:
                 await component.async_update(notify=False)
             except ModbusConnectionError:
                 raise
+            except ModbusTimeoutError as err:
+                if not updated and not failed:
+                    raise  # nothing has answered: assume the rest time out too
+                failed[name] = err
             except ModbusError as err:
                 failed[name] = err
             else:

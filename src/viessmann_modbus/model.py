@@ -28,7 +28,8 @@ class UpdateReport:
 
     A failed sub-system kept its previous values and did not notify; the error
     that failed it rides along. A dead link is never in here — the update
-    raises ``ModbusConnectionError`` instead of reporting partial silence.
+    raises ``ModbusConnectionError`` instead of reporting partial silence, and
+    a timeout with nothing answered yet raises just the same.
     """
 
     updated: set[str]

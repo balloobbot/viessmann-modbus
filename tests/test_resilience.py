@@ -28,12 +28,12 @@ async def test_a_failed_sub_system_leaves_the_rest_fresh(
     seeded_unit.holding[35171] = [0, 1500]  # load power changes on the device
     seeded_unit.holding[35103] = 3300  # so does PV string 1 voltage
     seeded_unit.holding[37007] = 80  # and the battery's SoC
-    seeded_unit.fail_read(35169, ModbusTimeoutError("slow load block"))
+    seeded_unit.fail_read(35169, ServerDeviceBusyError())
     report = await device.async_update()
 
     assert not report.complete
     assert set(report.failed) == {"inverter"}
-    assert isinstance(report.failed["inverter"], ModbusTimeoutError)
+    assert isinstance(report.failed["inverter"], ServerDeviceBusyError)
     assert {"meter", "battery", "bms", "settings"} <= report.updated
     assert device.battery.soc == 80
     assert device.inverter.load_power == before
@@ -52,7 +52,7 @@ async def test_listeners_fire_at_the_end_and_only_for_fresh_components(
     )
     device.inverter.add_update_listener(lambda: seen.append(-1))
 
-    seeded_unit.fail_read(35169, ModbusTimeoutError("slow load block"))
+    seeded_unit.fail_read(35169, ServerDeviceBusyError())
     seeded_unit.read_events.clear()
     await device.async_update()
 
@@ -65,6 +65,20 @@ async def test_a_dead_link_raises_instead_of_reporting(
 ) -> None:
     seeded_unit.fail_requests(ModbusConnectionError("link down"))
     with pytest.raises(ModbusConnectionError):
+        await device.async_update()
+
+
+async def test_a_timeout_with_nothing_answered_raises(
+    device: ViessmannHybridInverter, seeded_unit: MockModbusUnit
+) -> None:
+    """A silent device must not be walked sub-system by sub-system.
+
+    The first sub-system polled is the probe: with no refresh and no refusal
+    behind it, a timeout there means the device is gone, and carrying on would
+    only pay four more of them.
+    """
+    seeded_unit.fail_read(35103, ModbusTimeoutError("device asleep"))
+    with pytest.raises(ModbusTimeoutError):
         await device.async_update()
 
 
