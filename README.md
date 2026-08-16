@@ -117,6 +117,20 @@ raw["holding"]  # {address: value} — everything on this inverter is FC03
 The dump replays into `modbus-connection`'s mock backend through `load_raw()`, so
 one attached to an issue can back a regression test with no hardware.
 
+## Checking a real inverter
+
+`script/query.py` reads one inverter once and prints every sub-system it has,
+which is the quickest way to see whether an inverter is wired and addressed
+correctly:
+
+```bash
+uv run script/query.py 192.168.1.50 --unit 247
+uv run script/query.py /dev/ttyUSB0 --transport serial --unit 247
+```
+
+Sub-systems this installation lacks are left out rather than printed empty. It
+prints the read count as well, which covers the setup probes as well as the poll.
+
 ## Not supported
 
 - **ASCII-over-TCP framing is not supported, under any circumstance.** The
